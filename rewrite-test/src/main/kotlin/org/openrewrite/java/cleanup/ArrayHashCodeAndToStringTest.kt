@@ -25,6 +25,9 @@ interface ArrayHashCodeAndToStringTest: JavaRecipeTest {
     override val recipe: Recipe
         get() = ArrayHashCodeAndToString()
 
+    override val parser: JavaParser
+        get() = JavaParser.fromJavaVersion().logCompilationWarningsAndErrors(true).build()
+
     @Test
     fun `replace array hashCode with Arrays hashCode`(jp: JavaParser) = assertChanged(
         jp,
@@ -37,6 +40,7 @@ interface ArrayHashCodeAndToStringTest: JavaRecipeTest {
         """,
         after = """
         import java.util.Arrays;
+
         class A {
             public static void main(String[] args) {
                 int argHash = Arrays.hashCode(args);

@@ -15,12 +15,24 @@
  */
 package org.openrewrite.java.cleanup;
 
+import org.openrewrite.ExecutionContext;
 import org.openrewrite.Recipe;
+import org.openrewrite.TreeVisitor;
 import org.openrewrite.internal.lang.Nullable;
+import org.openrewrite.java.JavaIsoVisitor;
+import org.openrewrite.java.JavaTemplate;
+import org.openrewrite.java.MethodMatcher;
+import org.openrewrite.java.tree.J;
+import org.openrewrite.java.tree.JavaType;
+import org.openrewrite.java.tree.Space;
+import org.openrewrite.marker.Markers;
+
 
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Set;
+
+import static org.openrewrite.Tree.randomId;
 
 public class ArrayHashCodeAndToString extends Recipe {
     @Override
@@ -36,5 +48,44 @@ public class ArrayHashCodeAndToString extends Recipe {
     @Override
     public @Nullable Duration getEstimatedEffortPerOccurrence() {
         return Duration.ofSeconds(15);
+    }
+
+    @Override
+    protected TreeVisitor<?, ExecutionContext> getVisitor() {
+        return new ArrayHashCodeAndToStringVisitor<>();
+    }
+
+    private static class ArrayHashCodeAndToStringVisitor<P> extends JavaIsoVisitor<P> {
+        private static final MethodMatcher hashCodeMethodMatcher = new MethodMatcher("Object hashCode()");
+        private final JavaTemplate hashCodeTemplate =
+                JavaTemplate
+                        .builder(this::getCursor, "Arrays.hashCode(#{anyArray()})")
+                        .imports("java.util.Arrays")
+                        .doBeforeParseTemplate(before -> System.out.println("before: " + before))
+                        .build();
+
+        @Override
+        public J.MethodInvocation visitMethodInvocation(J.MethodInvocation method, P p) {
+            if (hashCodeMethodMatcher.matches(method) && method.getSelect().getType() instanceof JavaType.Array) {
+                maybeAddImport("java.util.Arrays");
+                return method
+                        .<J.MethodInvocation>withTemplate(hashCodeTemplate, method.getCoordinates().replaceMethod(), method.getSelect())
+                        .withSelect(
+                                new J.Identifier(
+                                        randomId(),
+                                        method.getSelect() == null ?
+                                                Space.EMPTY :
+                                                method.getSelect().getPrefix(),
+                                        Markers.EMPTY,
+                                        "Arrays",
+                                        JavaType.ShallowClass.build("java.util.Arrays"),
+                                        null
+                                )
+                        );
+
+            } else {
+                return super.visitMethodInvocation(method, p);
+            }
+        }
     }
 }

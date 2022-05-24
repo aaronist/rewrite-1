@@ -30,14 +30,15 @@ interface DateFormatWeekYearTest: JavaRecipeTest {
     fun `correct format is not modified`(jp: JavaParser) = assertUnchanged(
         jp,
         before = """
+        import java.util.Date;
         import java.text.SimpleDateFormat;
         import java.time.format.DateTimeFormatter;
 
         class A {
             void a() {
                 Date d = new SimpleDateFormat("yyyy/MM/dd").parse("2015/12/31");
-                String r = new SimpleDateFormat("yyyy/MM/dd").format(d);   // Correct; returns '2015/12/31' as expected
-                r = DateTimeFormatter.ofPattern("yyyy/MM/dd").format(d); // Correct; returns '2015/12/31' as expected
+                String r = new SimpleDateFormat("yyyy/MM/dd").format(d.toInstant());   // Correct; returns '2015/12/31' as expected
+                r = DateTimeFormatter.ofPattern("yyyy/MM/dd").format(d.toInstant()); // Correct; returns '2015/12/31' as expected
             }
         }
         """
@@ -47,26 +48,59 @@ interface DateFormatWeekYearTest: JavaRecipeTest {
     fun `incorrect use of week year is fixed`(jp: JavaParser) = assertChanged(
         jp,
         before = """
+        import java.util.Date;
         import java.text.SimpleDateFormat;
         import java.time.format.DateTimeFormatter;
 
         class A {
             void a() {
                 Date d = new SimpleDateFormat("yyyy/MM/dd").parse("2015/12/31");
-                String r = new SimpleDateFormat("YYYY/MM/dd").format(d); // Incorrect; returns '2016/12/31'
-                r = DateTimeFormatter.ofPattern("YYYY/MM/dd").format(d); // Incorrect; returns '2016/12/31'
+                String r = new SimpleDateFormat("YYYY/MM/dd").format(d.toInstant());
+                r = DateTimeFormatter.ofPattern("YYYY/MM/dd").format(d.toInstant());
             }
         }
         """,
         after = """
+        import java.util.Date;
         import java.text.SimpleDateFormat;
         import java.time.format.DateTimeFormatter;
 
         class A {
             void a() {
                 Date d = new SimpleDateFormat("yyyy/MM/dd").parse("2015/12/31");
-                String r = new SimpleDateFormat("yyyy/MM/dd").format(d); // Correct; returns '2015/12/31'
-                r = DateTimeFormatter.ofPattern("yyyy/MM/dd").format(d); // Correct; returns '2015/12/31'
+                String r = new SimpleDateFormat("yyyy/MM/dd").format(d.toInstant());
+                r = DateTimeFormatter.ofPattern("yyyy/MM/dd").format(d.toInstant());
+            }
+        }
+        """
+    )
+
+    @Test
+    fun `this case is insansane`(jp: JavaParser) = assertChanged(
+        jp,
+        before = """
+        import java.util.Date;
+        import java.text.SimpleDateFormat;
+        import java.time.format.DateTimeFormatter;
+
+        class A {
+            void a() {
+                String format = "yyyy/MM/dd";
+                Date d = new SimpleDateFormat(format).parse("2015/12/31");
+                Date 2 = new SimpleDateFormat((DateTimeFormatter.ofPattern("yyyy/MM/dd").format(d.toInstant()))).parse("2015/12/31");
+            }
+        }
+        """,
+        after = """
+        import java.util.Date;
+        import java.text.SimpleDateFormat;
+        import java.time.format.DateTimeFormatter;
+
+        class A {
+            void a() {
+                Date d = new SimpleDateFormat("yyyy/MM/dd").parse("2015/12/31");
+                String r = new SimpleDateFormat("yyyy/MM/dd").format(d.toInstant());
+                r = DateTimeFormatter.ofPattern("yyyy/MM/dd").format(d.toInstant());
             }
         }
         """
@@ -77,14 +111,15 @@ interface DateFormatWeekYearTest: JavaRecipeTest {
     fun `correct use of week year is unmodified`(jp: JavaParser) = assertUnchanged(
         jp,
         before = """
+        import java.util.Date;
         import java.text.SimpleDateFormat;
         import java.time.format.DateTimeFormatter;
 
         class A {
             void a() {
                 Date d = new SimpleDateFormat("yyyy/MM/dd").parse("2015/12/31");
-                String r = new SimpleDateFormat("YYYY-ww").format(d); // Correct, 'Week year' is used with 'Week of year'. r = '2016-01'
-                r = DateTimeFormatter.ofPattern("YYYY-ww").format(d); // Correct; returns '2016-01' as expected
+                String r = new SimpleDateFormat("YYYY-ww").format(d.toInstant()); // Correct, 'Week year' is used with 'Week of year'. r = '2016-01'
+                r = DateTimeFormatter.ofPattern("YYYY-ww").format(d.toInstant()); // Correct; returns '2016-01' as expected
             }
         }
         """
